@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rebase:*)",
+      "Bash(GIT_SEQUENCE_EDITOR=\"sed -i '''' -e ''2s/^pick/squash/'' -e ''3s/^pick/squash/''\" git rebase -i HEAD~3)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(npm audit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
