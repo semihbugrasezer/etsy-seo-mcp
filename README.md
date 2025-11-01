@@ -41,14 +41,15 @@ Add this to your Claude Desktop config:
       "command": "npx",
       "args": ["-y", "@devqora/etsy-seo-mcp"],
       "env": {
-        "EMAIL": "your-email@example.com"
+        "EMAIL": "your-email@example.com",
+        "MCP_API_KEY": "your-api-key"
       }
     }
   }
 }
 ```
 
-**Important:** Replace `your-email@example.com` with your email address for usage tracking.
+**Important:** Replace `your-email@example.com` with your email address for usage tracking and `your-api-key` with the per-user API key provided from your DevQora dashboard. The key is used to sign every request automatically.
 
 ### 2. Restart Claude Desktop
 
@@ -62,7 +63,7 @@ That's it! Just ask Claude:
 Generate an Etsy listing for my handmade ceramic coffee mug
 ```
 
-**Free Tier:** 10 generations per month
+**Free Tier:** 5 generations per month
 **Premium:** Unlimited generations - [Upgrade at devqora.space](https://devqora.space)
 
 ---
@@ -112,6 +113,57 @@ Each generation includes:
 - Market competitive range
 
 ---
+
+## 🔐 Security
+
+This MCP server implements **enterprise-grade security** with comprehensive protection against common vulnerabilities:
+
+### 🛡️ Cryptographic Security
+- **HMAC-SHA256 Signatures**: All requests cryptographically signed with secret key
+- **Payload-Based Replay Protection**: Timestamp + payload hash prevents duplicate requests
+- **Timestamp Validation**: 5-minute window prevents time-based attacks
+- **Duplicate Request Detection**: Request cache blocks replay attempts
+
+### 🚫 Input Validation & DoS Protection
+- **Buffer Overflow Protection**: 1MB max buffer size prevents memory exhaustion
+- **Input Length Limits**: Enforced max lengths for all user inputs
+  - Product name: 500 chars
+  - Category: 200 chars
+  - Email: 254 chars (RFC 5321)
+- **ReDoS Prevention**: Non-backtracking regex patterns prevent regex DoS
+- **JSON Injection Protection**: Safe parsing with structure validation
+- **Rate Limiting**: 10 requests/minute per user
+
+### 🌐 Network Security
+- **SSRF Protection**: Whitelist-based API endpoint validation
+- **Protocol Enforcement**: HTTPS required (HTTP only for localhost)
+- **Request Timeout**: 30-second timeout prevents hanging connections
+- **Allowed Hosts**:
+  - `devqora.space`
+  - `api.devqora.space`
+  - `localhost` (development only)
+
+### 🧹 Data Sanitization
+- **XSS Prevention**: HTML entity encoding for all outputs
+- **Email Validation**: RFC-compliant format validation
+- **Response Validation**: Strict schema validation of API responses
+- **Safe Error Messages**: Error messages sanitized to prevent info disclosure
+
+### 📊 Resource Management
+- **Memory Leak Prevention**: Automatic cache cleanup every 5 minutes
+- **Cache Size Limits**: Bounded cache sizes prevent memory exhaustion
+- **Rate Limit Cleanup**: Automatic removal of expired rate limit entries
+
+### 🔧 Environment Variables
+- `MCP_API_KEY`: **Recommended** - Your per-user API key for request signing
+- `MCP_API_SECRET`: Optional legacy shared secret (only needed if you have not rotated to per-user keys yet)
+- `EMAIL`: **Required** - Your email for usage tracking
+- `API_BASE`: Optional - API endpoint (must be in whitelist)
+- `API_PATH`: Optional - API path (default: /api/generate)
+- `LOG_LEVEL`: Optional - Logging level: debug/info/warn/error (default: error)
+
+---
+
 
 ## 🌐 Web Interface
 
