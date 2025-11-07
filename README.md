@@ -16,6 +16,10 @@ Generate perfect SEO titles, descriptions, and tags in seconds
 
 ---
 
+<a href="https://glama.ai/mcp/servers/@semihbugrasezer/etsy-seo-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@semihbugrasezer/etsy-seo-mcp/badge" alt="Etsy SEO Generator MCP server" />
+</a>
+
 ## 🎯 What is this?
 
 A Claude Desktop integration that generates complete, SEO-optimized Etsy product listings instantly. Perfect for Etsy sellers who want to:
