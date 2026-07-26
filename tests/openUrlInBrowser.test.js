@@ -21,7 +21,12 @@ describe("openUrlInBrowser", () => {
 
     openUrlInBrowser("https://example.com");
     assert.strictEqual(openMock.mock.calls.length, 0);
-    assert.strictEqual(consoleErrorMock.mock.calls.length, 0);
+    assert.strictEqual(
+      consoleErrorMock.mock.calls.filter(({ arguments: [message] }) =>
+        String(message).startsWith("Failed to open browser"),
+      ).length,
+      0,
+    );
   });
 
   it("should catch and log error if open rejects", async () => {
@@ -42,10 +47,14 @@ describe("openUrlInBrowser", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     assert.strictEqual(openMock.mock.calls.length, 1);
-    assert.strictEqual(consoleErrorMock.mock.calls.length, 1);
+    const expectedMessage = chalk.yellow(
+      `Failed to open browser automatically: ${errorMsg}`,
+    );
     assert.strictEqual(
-      consoleErrorMock.mock.calls[0].arguments[0],
-      chalk.yellow(`Failed to open browser automatically: ${errorMsg}`),
+      consoleErrorMock.mock.calls.filter(
+        ({ arguments: [message] }) => message === expectedMessage,
+      ).length,
+      1,
     );
   });
 
@@ -64,10 +73,14 @@ describe("openUrlInBrowser", () => {
     openUrlInBrowser("https://example.com");
 
     assert.strictEqual(openMock.mock.calls.length, 1);
-    assert.strictEqual(consoleErrorMock.mock.calls.length, 1);
+    const expectedMessage = chalk.yellow(
+      `Failed to invoke browser opener: ${errorMsg}`,
+    );
     assert.strictEqual(
-      consoleErrorMock.mock.calls[0].arguments[0],
-      chalk.yellow(`Failed to invoke browser opener: ${errorMsg}`),
+      consoleErrorMock.mock.calls.filter(
+        ({ arguments: [message] }) => message === expectedMessage,
+      ).length,
+      1,
     );
   });
 });

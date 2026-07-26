@@ -64,8 +64,11 @@ describe('initConfig', () => {
 
     await initConfig();
 
+    const expectedConfigDir = process.env.SEERXO_CONFIG_DIR
+      ? path.resolve(process.env.SEERXO_CONFIG_DIR)
+      : path.join(os.homedir(), '.seerxo-mcp');
     assert.deepStrictEqual(readFileMock.mock.calls[0].arguments, [
-      path.join(os.homedir(), '.seerxo-mcp', 'config.json'),
+      path.join(expectedConfigDir, 'config.json'),
       'utf8',
     ]);
 
