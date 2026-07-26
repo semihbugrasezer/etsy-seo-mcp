@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import readline from 'node:readline/promises';
 import {
   MCP_TOOLS,
   LISTING_TOOLS,
@@ -16,6 +17,7 @@ import {
   getRuntimeConfigState,
   handleCli,
   setRuntimeConfig,
+  startInteractiveShell,
 } from '../mcp-server.js';
 
 describe('listing tool definitions', () => {
@@ -284,6 +286,54 @@ describe('cli listing commands', () => {
 
     assert.ok(!failed);
     assert.ok(lines.join('\n').includes('seerxo optimize'));
+  });
+
+  it('shows normalized backend errors in the interactive prompt', async () => {
+    const originalCreateInterface = readline.createInterface;
+    const originalFetch = globalThis.fetch;
+    const originalLog = console.log;
+    const originalError = console.error;
+    const errors = [];
+    const answers = ['interactive error fixture', 'quit'];
+
+    setRuntimeConfig({
+      email: 'user@example.com',
+      apiKey: 'fixture.0123456789abcdef',
+      host: 'https://api.seerxo.test',
+    });
+    readline.createInterface = () => ({
+      question: async () => answers.shift(),
+      close() {
+        this.closed = true;
+      },
+      closed: false,
+    });
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 401,
+      headers: new Headers(),
+      json: async () => ({
+        message: 'Bad token',
+        code: 'invalid_api_key',
+        requestId: 'req-interactive',
+      }),
+    });
+    console.log = () => {};
+    console.error = (...parts) => errors.push(parts.join(' '));
+
+    try {
+      await startInteractiveShell();
+    } finally {
+      readline.createInterface = originalCreateInterface;
+      globalThis.fetch = originalFetch;
+      console.log = originalLog;
+      console.error = originalError;
+    }
+
+    assert.strictEqual(
+      errors.join('\n'),
+      'Invalid API key (Bad token [request req-interactive]). Run "seerxo login" to refresh credentials.',
+    );
   });
 
   it('installs the complete Claude Code skill bundle', async () => {

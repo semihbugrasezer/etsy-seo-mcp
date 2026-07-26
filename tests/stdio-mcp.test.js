@@ -128,8 +128,14 @@ describe('stdio MCP process', () => {
       method: 'notifications/initialized',
       params: {},
     })}\n`);
+    child.stdin.write(`${JSON.stringify({
+      jsonrpc: '2.0',
+      method: '__proto__',
+      params: {},
+    })}\n`);
 
     const listed = await request({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
+    assert.equal(stdoutLines.some((line) => JSON.parse(line).id === null), false);
     assert.deepEqual(listed.result.tools.map((tool) => tool.name).sort(), [
       'generate_etsy_seo',
       'seerxo_analyze_listing',
