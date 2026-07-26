@@ -6,3 +6,21 @@ group = "dev"
 vulnerability.ignore = true
 effectiveUntil = 2026-08-31
 reason = "Bundled inside npm 11.17.0 via node-gyp release tooling; not shipped in the seerxo package runtime."
+
+[[PackageOverrides]]
+name = "brace-expansion"
+version = "5.0.7"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-08-31
+reason = "Bundled inside npm 11.18.0 via release tooling; not shipped in the seerxo package runtime."
+
+[[PackageOverrides]]
+name = "tar"
+version = "7.5.19"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-08-31
+reason = "Bundled inside npm 11.18.0 via release tooling; not shipped in the seerxo package runtime."
