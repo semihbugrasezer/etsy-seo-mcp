@@ -1331,6 +1331,96 @@ export async function handleCli(subArgs) {
   process.exitCode = 1;
 }
 
+async function handleGenerateEtsySeo(toolArgs) {
+  if (
+    typeof toolArgs.product_name !== "string" ||
+    !toolArgs.product_name.trim()
+  ) {
+    throw new Error(
+      "Invalid argument: product_name must be a non-empty string",
+    );
+  }
+  if (toolArgs.category != null && typeof toolArgs.category !== "string") {
+    throw new Error("Invalid argument: category must be a string");
+  }
+
+  const result = await generateEtsySEO(
+    toolArgs.product_name,
+    toolArgs.category || "",
+  );
+  const usageInfo = result.usage
+    ? (() => {
+        const summary = buildQuotaSummary(result.usage);
+        return `\n\n---\n**Credits:** ${summary.headline} (${summary.detail})`;
+      })()
+    : "";
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `# Etsy SEO Results for "${toolArgs.product_name}"\n\n## 📝 SEO Title\n${result.title}\n\n## 📄 Product Description\n${result.description}\n\n## 🏷️ Tags (13)\n${result.tags.join(", ")}${usageInfo}`,
+      },
+    ],
+    structuredContent: {
+      title: result.title,
+      description: result.description,
+      tags: result.tags,
+      ...(result.usage ? { usage: result.usage } : {}),
+    },
+  };
+}
+
+async function handleSuggestKeywords(toolArgs) {
+  const data = await callSeerxoV1(
+    "/v1/keywords",
+    buildListingPayload(toolArgs),
+  );
+  return {
+    content: [{ type: "text", text: formatKeywordsResult(data) }],
+    structuredContent: data,
+  };
+}
+
+async function handleAnalyzeOrOptimizeListing(name, toolArgs) {
+  const isAnalyze = name === "seerxo_analyze_listing";
+  const payload = buildListingPayload(toolArgs);
+  if (!isAnalyze && toolArgs.mode != null) {
+    if (
+      !["full", "title_only", "description_only", "tags_only"].includes(
+        toolArgs.mode,
+      )
+    ) {
+      throw new Error("Invalid argument: mode is not supported");
+    }
+    payload.mode = toolArgs.mode;
+  }
+  const data = await callSeerxoV1(
+    isAnalyze ? "/v1/analyze" : "/v1/optimize",
+    payload,
+  );
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: isAnalyze
+          ? formatAnalyzeResult(data)
+          : formatOptimizeResult(data),
+      },
+    ],
+    structuredContent: data,
+  };
+}
+
+async function handleQuota() {
+  const quota = await fetchQuota();
+  return {
+    content: [{ type: "text", text: JSON.stringify(quota, null, 2) }],
+    structuredContent: quota,
+  };
+}
+
 async function handleMcpToolCall(request) {
   const params = request.params;
   if (!params || typeof params !== "object" || Array.isArray(params)) {
@@ -1346,125 +1436,26 @@ async function handleMcpToolCall(request) {
     throw new Error("Invalid tool arguments: must be an object");
   }
 
-  if (name === "generate_etsy_seo") {
-    if (
-      typeof toolArgs.product_name !== "string" ||
-      !toolArgs.product_name.trim()
-    ) {
-      throw new Error(
-        "Invalid argument: product_name must be a non-empty string",
-      );
-    }
-    if (toolArgs.category != null && typeof toolArgs.category !== "string") {
-      throw new Error("Invalid argument: category must be a string");
-    }
-
-    const result = await generateEtsySEO(
-      toolArgs.product_name,
-      toolArgs.category || "",
-    );
-    const usageInfo = result.usage
-      ? (() => {
-          const summary = buildQuotaSummary(result.usage);
-          return `\n\n---\n**Credits:** ${summary.headline} (${summary.detail})`;
-        })()
-      : "";
-
-    console.log(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: request.id,
-        result: {
-          content: [
-            {
-              type: "text",
-              text: `# Etsy SEO Results for "${toolArgs.product_name}"\n\n## 📝 SEO Title\n${result.title}\n\n## 📄 Product Description\n${result.description}\n\n## 🏷️ Tags (13)\n${result.tags.join(", ")}${usageInfo}`,
-            },
-          ],
-          structuredContent: {
-            title: result.title,
-            description: result.description,
-            tags: result.tags,
-            ...(result.usage ? { usage: result.usage } : {}),
-          },
-        },
-      }),
-    );
-    return;
+  let result;
+  switch (name) {
+    case "generate_etsy_seo":
+      result = await handleGenerateEtsySeo(toolArgs);
+      break;
+    case "seerxo_suggest_keywords":
+      result = await handleSuggestKeywords(toolArgs);
+      break;
+    case "seerxo_analyze_listing":
+    case "seerxo_optimize_listing":
+      result = await handleAnalyzeOrOptimizeListing(name, toolArgs);
+      break;
+    case "seerxo_quota":
+      result = await handleQuota();
+      break;
+    default:
+      throw new Error(`Unknown tool: ${name}`);
   }
 
-  if (name === "seerxo_suggest_keywords") {
-    const data = await callSeerxoV1(
-      "/v1/keywords",
-      buildListingPayload(toolArgs),
-    );
-    console.log(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: request.id,
-        result: {
-          content: [{ type: "text", text: formatKeywordsResult(data) }],
-          structuredContent: data,
-        },
-      }),
-    );
-    return;
-  }
-
-  if (name === "seerxo_analyze_listing" || name === "seerxo_optimize_listing") {
-    const isAnalyze = name === "seerxo_analyze_listing";
-    const payload = buildListingPayload(toolArgs);
-    if (!isAnalyze && toolArgs.mode != null) {
-      if (
-        !["full", "title_only", "description_only", "tags_only"].includes(
-          toolArgs.mode,
-        )
-      ) {
-        throw new Error("Invalid argument: mode is not supported");
-      }
-      payload.mode = toolArgs.mode;
-    }
-    const data = await callSeerxoV1(
-      isAnalyze ? "/v1/analyze" : "/v1/optimize",
-      payload,
-    );
-
-    console.log(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: request.id,
-        result: {
-          content: [
-            {
-              type: "text",
-              text: isAnalyze
-                ? formatAnalyzeResult(data)
-                : formatOptimizeResult(data),
-            },
-          ],
-          structuredContent: data,
-        },
-      }),
-    );
-    return;
-  }
-
-  if (name === "seerxo_quota") {
-    const quota = await fetchQuota();
-    console.log(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: request.id,
-        result: {
-          content: [{ type: "text", text: JSON.stringify(quota, null, 2) }],
-          structuredContent: quota,
-        },
-      }),
-    );
-    return;
-  }
-
-  throw new Error(`Unknown tool: ${name}`);
+  console.log(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }));
 }
 
 const mcpHandlers = {
