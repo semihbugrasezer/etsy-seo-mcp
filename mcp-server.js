@@ -869,9 +869,14 @@ async function generateEtsySEO(productName, category = "") {
       wrapped.status = error.status;
       wrapped.code = error.code;
       wrapped.requestId = error.requestId;
-      wrapped.payload = error.payload
-        ? { ...error.payload, paymentLink }
-        : { paymentLink };
+      wrapped.payload = {
+        ...error.payload,
+        message: wrapped.message,
+        status: error.status,
+        code: error.code,
+        requestId: error.requestId,
+        paymentLink,
+      };
       throw wrapped;
     }
   })();
