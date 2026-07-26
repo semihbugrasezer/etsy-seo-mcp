@@ -18,7 +18,7 @@ import {
   formatOptimizeResult,
 } from "./src/formatters/listing.js";
 
-export { LISTING_TOOLS, MCP_TOOLS };
+export { LISTING_TOOLS, MCP_TOOLS, openUrlInBrowser };
 export { formatAnalyzeResult, formatKeywordsResult, formatOptimizeResult };
 
 function boxen(content, options = {}) {
