@@ -46,7 +46,7 @@ describe("buildQuotaSummary", () => {
   it("returns warning summary for low quota (remaining = 1)", () => {
     const result = buildQuotaSummary({ limit: 10, remaining: 1, current: 9 });
     assert.deepEqual(result, {
-      headline: "1 credits left",
+      headline: "1 credit left",
       detail: "9/10 used",
       tone: "warning",
     });

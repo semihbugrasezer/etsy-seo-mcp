@@ -195,7 +195,10 @@ export function buildQuotaSummary(usage = {}) {
 
   if (hasFiniteLimit && remaining !== null) {
     return {
-      headline: remaining === 0 ? 'No credits left' : `${remaining} credits left`,
+      headline:
+        remaining === 0
+          ? 'No credits left'
+          : `${remaining} credit${remaining === 1 ? '' : 's'} left`,
       detail: `${current}/${limit} used`,
       tone: remaining === 0 ? 'danger' : remaining <= 2 ? 'warning' : 'info',
     };
