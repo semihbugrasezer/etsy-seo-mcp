@@ -118,6 +118,41 @@ describe("fetchJson", () => {
     );
   });
 
+  it("should map AbortError to a friendly error with code 'timeout'", async () => {
+    global.fetch = async () => {
+      const err = new Error("The operation was aborted");
+      err.name = "AbortError";
+      throw err;
+    };
+
+    await assert.rejects(
+      async () => await fetchJson("https://example.com/api"),
+      (err) => {
+        assert.match(err.message, /timed out after \d+s/);
+        assert.strictEqual(err.code, "timeout");
+        return true;
+      },
+    );
+  });
+
+  it("should map nested cause TimeoutError to a friendly error with code 'timeout'", async () => {
+    global.fetch = async () => {
+      const err = new Error("fetch failed");
+      err.cause = new Error("The operation was aborted due to timeout");
+      err.cause.name = "TimeoutError";
+      throw err;
+    };
+
+    await assert.rejects(
+      async () => await fetchJson("https://example.com/api"),
+      (err) => {
+        assert.match(err.message, /timed out after \d+s/);
+        assert.strictEqual(err.code, "timeout");
+        return true;
+      },
+    );
+  });
+
   it("should propagate fetch network errors", async () => {
     global.fetch = async () => {
       throw new Error("Network failure");
