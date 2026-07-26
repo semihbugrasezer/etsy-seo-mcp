@@ -1,6 +1,8 @@
 import { describe, it, mock, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fsPromises } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   initConfig,
   getRuntimeConfigState,
@@ -52,7 +54,7 @@ describe('initConfig', () => {
   });
 
   it('should fallback to local config when env vars are missing', async () => {
-    mock.method(fsPromises, 'readFile', async () => {
+    const readFileMock = mock.method(fsPromises, 'readFile', async () => {
       return JSON.stringify({
         email: 'local@example.com',
         apiKey: 'localKeyId.localSecret1234567890',
@@ -61,6 +63,11 @@ describe('initConfig', () => {
     });
 
     await initConfig();
+
+    assert.deepStrictEqual(readFileMock.mock.calls[0].arguments, [
+      path.join(os.homedir(), '.seerxo-mcp', 'config.json'),
+      'utf8',
+    ]);
 
     const state = getRuntimeConfigState();
     assert.strictEqual(state.email, 'local@example.com');
