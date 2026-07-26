@@ -795,18 +795,6 @@ export function generateSignature(payload, timestampValue = Date.now()) {
   return { signature, timestamp };
 }
 
-function openUpgradeLink(url = upgradeUrl) {
-  if (!url) return;
-  console.log(
-    chalk.yellow(`
-Usage limit reached. Opening upgrade page: ${url}
-`),
-  );
-  try {
-    open(url).catch(() => {});
-  } catch {}
-}
-
 const seoCache = new Map();
 
 async function generateEtsySEO(productName, category = "") {
@@ -890,7 +878,7 @@ async function generateEtsySEO(productName, category = "") {
 
 // Shared caller for the versioned REST API (/v1/*). The response contracts
 // live server-side; tools wrap them 1:1.
-async function callSeerxoV1(pathname, payload) {
+export async function callSeerxoV1(pathname, payload) {
   if (!apiKeyHeader || !apiKeySecret) {
     throw new Error('API key is not set. Run "seerxo configure" first.');
   }
