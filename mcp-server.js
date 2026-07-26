@@ -871,7 +871,7 @@ async function generateEtsySEO(productName, category = '') {
 
 // Shared caller for the versioned REST API (/v1/*). The response contracts
 // live server-side; tools wrap them 1:1.
-async function callSeerxoV1(pathname, payload) {
+export async function callSeerxoV1(pathname, payload) {
   if (!apiKeyHeader || !apiKeySecret) {
     throw new Error('API key is not set. Run "seerxo configure" first.');
   }
