@@ -1556,7 +1556,9 @@ async function processMcpMessage(line) {
   try {
     request = JSON.parse(line);
 
-    const handler = mcpHandlers[request.method];
+    const handler = Object.hasOwn(mcpHandlers, request.method)
+      ? mcpHandlers[request.method]
+      : undefined;
     if (handler) {
       await handler(request);
     }
