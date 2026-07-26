@@ -786,9 +786,13 @@ const runLoginCommand = async (extraArgs = [], options = {}) => {
 };
 
 export function generateSignature(payload, timestampValue = Date.now()) {
+  if (!apiKeySecret) {
+    throw new Error("API key secret is missing or invalid.");
+  }
+
   const timestamp = String(timestampValue);
   const signature = crypto
-    .createHmac("sha256", apiKeySecret || "")
+    .createHmac("sha256", apiKeySecret)
     .update(JSON.stringify(payload))
     .update(timestamp)
     .digest("hex");
