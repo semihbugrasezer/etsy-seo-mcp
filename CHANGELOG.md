@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/semihbugrasezer/seerxo/compare/v1.12.7...v1.13.0) (2026-07-26)
+
+
+### Features
+
+* define package exports to lock public entry point ([78582a4](https://github.com/semihbugrasezer/seerxo/commit/78582a4e88029f4fe1e3fdac5784c201dcac10f2))
+
 ## [1.12.7](https://github.com/semihbugrasezer/seerxo/compare/v1.12.6...v1.12.7) (2026-07-22)
 
 
