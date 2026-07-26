@@ -6,6 +6,7 @@ describe("seerxo-mcp entrypoint", () => {
     // The entrypoint checks if (process.env.NODE_ENV !== 'test')
     // and avoids starting the server in test environments.
     // By importing it, we verify the syntax is valid and modules resolve.
+    process.env.NODE_ENV = "test";
     await import("../bin/seerxo-mcp.js");
     ok(true);
   });
