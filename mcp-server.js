@@ -764,16 +764,6 @@ export function generateSignature(payload, timestampValue = Date.now()) {
   return { signature, timestamp };
 }
 
-function openUpgradeLink(url = upgradeUrl) {
-  if (!url) return;
-  console.log(chalk.yellow(`
-Usage limit reached. Opening upgrade page: ${url}
-`));
-  try {
-    open(url).catch(() => {});
-  } catch {}
-}
-
 const seoCache = new Map();
 
 async function generateEtsySEO(productName, category = '') {
