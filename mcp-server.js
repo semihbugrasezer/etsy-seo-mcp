@@ -1461,67 +1461,72 @@ async function handleMcpToolCall(request) {
   throw new Error(`Unknown tool: ${name}`);
 }
 
+const mcpHandlers = {
+  initialize: async (request) => {
+    if (request.params?.initializationOptions?.email) {
+      userEmail = request.params.initializationOptions.email;
+    }
+    if (!userEmail) {
+      throw new Error('SEERXO_EMAIL is required. Run "seerxo configure".');
+    }
+    if (!apiKeyHeader) {
+      throw new Error('SEERXO_API_KEY is required. Run "seerxo configure".');
+    }
+
+    console.log(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: {
+          protocolVersion: SUPPORTED_MCP_PROTOCOL_VERSIONS.has(
+            request.params?.protocolVersion,
+          )
+            ? request.params.protocolVersion
+            : MCP_PROTOCOL_VERSION,
+          capabilities: { tools: {} },
+          serverInfo: {
+            name: "seerxo",
+            title: "Seerxo — Etsy SEO Assistant",
+            version: clientVersion,
+            description:
+              "Generate, analyze, and optimize Etsy listings with SEO-focused titles, descriptions, tags, and keyword suggestions.",
+            websiteUrl: "https://www.seerxo.com",
+            icons: [
+              {
+                src: "https://www.seerxo.com/favicon.svg",
+                mimeType: "image/svg+xml",
+              },
+            ],
+          },
+        },
+      }),
+    );
+  },
+  "tools/list": async (request) => {
+    console.log(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: { tools: MCP_TOOLS },
+      }),
+    );
+  },
+  "tools/call": async (request) => {
+    await handleMcpToolCall(request);
+  },
+};
+
 async function processMcpMessage(line) {
   let request = null;
 
   try {
     request = JSON.parse(line);
 
-    if (request.method === "initialize") {
-      if (request.params?.initializationOptions?.email) {
-        userEmail = request.params.initializationOptions.email;
-      }
-      if (!userEmail) {
-        throw new Error('SEERXO_EMAIL is required. Run "seerxo configure".');
-      }
-      if (!apiKeyHeader) {
-        throw new Error('SEERXO_API_KEY is required. Run "seerxo configure".');
-      }
-
-      console.log(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: request.id,
-          result: {
-            protocolVersion: SUPPORTED_MCP_PROTOCOL_VERSIONS.has(
-              request.params?.protocolVersion,
-            )
-              ? request.params.protocolVersion
-              : MCP_PROTOCOL_VERSION,
-            capabilities: { tools: {} },
-            serverInfo: {
-              name: "seerxo",
-              title: "Seerxo — Etsy SEO Assistant",
-              version: clientVersion,
-              description:
-                "Generate, analyze, and optimize Etsy listings with SEO-focused titles, descriptions, tags, and keyword suggestions.",
-              websiteUrl: "https://www.seerxo.com",
-              icons: [
-                {
-                  src: "https://www.seerxo.com/favicon.svg",
-                  mimeType: "image/svg+xml",
-                },
-              ],
-            },
-          },
-        }),
-      );
-      return;
-    }
-
-    if (request.method === "tools/list") {
-      console.log(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: request.id,
-          result: { tools: MCP_TOOLS },
-        }),
-      );
-      return;
-    }
-
-    if (request.method === "tools/call") {
-      await handleMcpToolCall(request);
+    const handler = Object.hasOwn(mcpHandlers, request.method)
+      ? mcpHandlers[request.method]
+      : undefined;
+    if (handler) {
+      await handler(request);
     }
   } catch (error) {
     if (
