@@ -820,7 +820,7 @@ async function generateEtsySEO(productName, category = "") {
 
       const { signature, timestamp } = generateSignature(payload);
 
-      const response = await fetch(getGenerateEndpoint(), {
+      const data = await fetchJson(getGenerateEndpoint(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -833,60 +833,38 @@ async function generateEtsySEO(productName, category = "") {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        const requestId =
-          data?.requestId || response.headers.get("x-request-id") || null;
-        const rawMessage =
-          data?.error || data?.message || `API error: ${response.status}`;
-        const message = formatApiErrorMessage(
-          rawMessage,
-          response.status,
-          requestId,
-        );
-        const payload = {
-          message,
-          status: response.status,
-          code: data?.code || null,
-          requestId,
-          paymentLink: data?.upgrade?.paymentLink || data?.paymentLink || null,
-        };
-        const error = new Error(message);
-        error.payload = payload;
-        error.status = response.status;
-        error.code = payload.code;
-        error.requestId = requestId;
-        throw error;
-      }
-
       if (!data.success) {
         const message = data.error || "Content generation failed";
         const error = new Error(message);
-        error.payload = {
-          message,
-        };
+        error.payload = { message };
         throw error;
       }
 
-      const result = {
+      return {
         ...data.data,
         usage: data.usage,
       };
-
-      return result;
     } catch (error) {
       seoCache.delete(cacheKey);
+      const paymentLink =
+        error.payload?.upgrade?.paymentLink ||
+        error.payload?.paymentLink ||
+        null;
       const wrapped = new Error(
-        error.message || "Failed to generate Etsy SEO content",
-        {
-          cause: error,
-        },
+        formatApiErrorMessage(error.message, error.status, error.requestId),
+        { cause: error },
       );
       wrapped.status = error.status;
       wrapped.code = error.code;
       wrapped.requestId = error.requestId;
-      wrapped.payload = error.payload;
+      wrapped.payload = {
+        ...error.payload,
+        message: wrapped.message,
+        status: error.status,
+        code: error.code,
+        requestId: error.requestId,
+        paymentLink,
+      };
       throw wrapped;
     }
   })();
