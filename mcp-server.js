@@ -18,7 +18,7 @@ import {
   formatOptimizeResult,
 } from "./src/formatters/listing.js";
 
-export { LISTING_TOOLS, MCP_TOOLS };
+export { LISTING_TOOLS, MCP_TOOLS, openUrlInBrowser };
 export { formatAnalyzeResult, formatKeywordsResult, formatOptimizeResult };
 
 function boxen(content, options = {}) {
@@ -795,18 +795,6 @@ export function generateSignature(payload, timestampValue = Date.now()) {
   return { signature, timestamp };
 }
 
-function openUpgradeLink(url = upgradeUrl) {
-  if (!url) return;
-  console.log(
-    chalk.yellow(`
-Usage limit reached. Opening upgrade page: ${url}
-`),
-  );
-  try {
-    open(url).catch(() => {});
-  } catch {}
-}
-
 const seoCache = new Map();
 
 async function generateEtsySEO(productName, category = "") {
@@ -832,7 +820,7 @@ async function generateEtsySEO(productName, category = "") {
 
       const { signature, timestamp } = generateSignature(payload);
 
-      const response = await fetch(getGenerateEndpoint(), {
+      const data = await fetchJson(getGenerateEndpoint(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -845,60 +833,38 @@ async function generateEtsySEO(productName, category = "") {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        const requestId =
-          data?.requestId || response.headers.get("x-request-id") || null;
-        const rawMessage =
-          data?.error || data?.message || `API error: ${response.status}`;
-        const message = formatApiErrorMessage(
-          rawMessage,
-          response.status,
-          requestId,
-        );
-        const payload = {
-          message,
-          status: response.status,
-          code: data?.code || null,
-          requestId,
-          paymentLink: data?.upgrade?.paymentLink || data?.paymentLink || null,
-        };
-        const error = new Error(message);
-        error.payload = payload;
-        error.status = response.status;
-        error.code = payload.code;
-        error.requestId = requestId;
-        throw error;
-      }
-
       if (!data.success) {
         const message = data.error || "Content generation failed";
         const error = new Error(message);
-        error.payload = {
-          message,
-        };
+        error.payload = { message };
         throw error;
       }
 
-      const result = {
+      return {
         ...data.data,
         usage: data.usage,
       };
-
-      return result;
     } catch (error) {
       seoCache.delete(cacheKey);
+      const paymentLink =
+        error.payload?.upgrade?.paymentLink ||
+        error.payload?.paymentLink ||
+        null;
       const wrapped = new Error(
-        error.message || "Failed to generate Etsy SEO content",
-        {
-          cause: error,
-        },
+        formatApiErrorMessage(error.message, error.status, error.requestId),
+        { cause: error },
       );
       wrapped.status = error.status;
       wrapped.code = error.code;
       wrapped.requestId = error.requestId;
-      wrapped.payload = error.payload;
+      wrapped.payload = {
+        ...error.payload,
+        message: wrapped.message,
+        status: error.status,
+        code: error.code,
+        requestId: error.requestId,
+        paymentLink,
+      };
       throw wrapped;
     }
   })();
@@ -912,7 +878,7 @@ async function generateEtsySEO(productName, category = "") {
 
 // Shared caller for the versioned REST API (/v1/*). The response contracts
 // live server-side; tools wrap them 1:1.
-async function callSeerxoV1(pathname, payload) {
+export async function callSeerxoV1(pathname, payload) {
   if (!apiKeyHeader || !apiKeySecret) {
     throw new Error('API key is not set. Run "seerxo configure" first.');
   }
@@ -1464,33 +1430,82 @@ async function handleMcpToolCall(request) {
     throw new Error("Invalid tool arguments: must be an object");
   }
 
-  let resultData;
+  let result;
   switch (name) {
     case "generate_etsy_seo":
-      resultData = await handleGenerateEtsySeo(toolArgs);
+      result = await handleGenerateEtsySeo(toolArgs);
       break;
     case "seerxo_suggest_keywords":
-      resultData = await handleSuggestKeywords(toolArgs);
+      result = await handleSuggestKeywords(toolArgs);
       break;
     case "seerxo_analyze_listing":
     case "seerxo_optimize_listing":
-      resultData = await handleAnalyzeOrOptimizeListing(name, toolArgs);
+      result = await handleAnalyzeOrOptimizeListing(name, toolArgs);
       break;
     case "seerxo_quota":
-      resultData = await handleQuota();
+      result = await handleQuota();
       break;
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
 
-  console.log(
-    JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      result: resultData,
-    }),
-  );
+  console.log(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }));
 }
+
+const mcpHandlers = {
+  initialize: async (request) => {
+    if (request.params?.initializationOptions?.email) {
+      userEmail = request.params.initializationOptions.email;
+    }
+    if (!userEmail) {
+      throw new Error('SEERXO_EMAIL is required. Run "seerxo configure".');
+    }
+    if (!apiKeyHeader) {
+      throw new Error('SEERXO_API_KEY is required. Run "seerxo configure".');
+    }
+
+    console.log(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: {
+          protocolVersion: SUPPORTED_MCP_PROTOCOL_VERSIONS.has(
+            request.params?.protocolVersion,
+          )
+            ? request.params.protocolVersion
+            : MCP_PROTOCOL_VERSION,
+          capabilities: { tools: {} },
+          serverInfo: {
+            name: "seerxo",
+            title: "Seerxo — Etsy SEO Assistant",
+            version: clientVersion,
+            description:
+              "Generate, analyze, and optimize Etsy listings with SEO-focused titles, descriptions, tags, and keyword suggestions.",
+            websiteUrl: "https://www.seerxo.com",
+            icons: [
+              {
+                src: "https://www.seerxo.com/favicon.svg",
+                mimeType: "image/svg+xml",
+              },
+            ],
+          },
+        },
+      }),
+    );
+  },
+  "tools/list": async (request) => {
+    console.log(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: { tools: MCP_TOOLS },
+      }),
+    );
+  },
+  "tools/call": async (request) => {
+    await handleMcpToolCall(request);
+  },
+};
 
 async function processMcpMessage(line) {
   let request = null;
@@ -1498,61 +1513,11 @@ async function processMcpMessage(line) {
   try {
     request = JSON.parse(line);
 
-    if (request.method === "initialize") {
-      if (request.params?.initializationOptions?.email) {
-        userEmail = request.params.initializationOptions.email;
-      }
-      if (!userEmail) {
-        throw new Error('SEERXO_EMAIL is required. Run "seerxo configure".');
-      }
-      if (!apiKeyHeader) {
-        throw new Error('SEERXO_API_KEY is required. Run "seerxo configure".');
-      }
-
-      console.log(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: request.id,
-          result: {
-            protocolVersion: SUPPORTED_MCP_PROTOCOL_VERSIONS.has(
-              request.params?.protocolVersion,
-            )
-              ? request.params.protocolVersion
-              : MCP_PROTOCOL_VERSION,
-            capabilities: { tools: {} },
-            serverInfo: {
-              name: "seerxo",
-              title: "Seerxo — Etsy SEO Assistant",
-              version: clientVersion,
-              description:
-                "Generate, analyze, and optimize Etsy listings with SEO-focused titles, descriptions, tags, and keyword suggestions.",
-              websiteUrl: "https://www.seerxo.com",
-              icons: [
-                {
-                  src: "https://www.seerxo.com/favicon.svg",
-                  mimeType: "image/svg+xml",
-                },
-              ],
-            },
-          },
-        }),
-      );
-      return;
-    }
-
-    if (request.method === "tools/list") {
-      console.log(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: request.id,
-          result: { tools: MCP_TOOLS },
-        }),
-      );
-      return;
-    }
-
-    if (request.method === "tools/call") {
-      await handleMcpToolCall(request);
+    const handler = Object.hasOwn(mcpHandlers, request.method)
+      ? mcpHandlers[request.method]
+      : undefined;
+    if (handler) {
+      await handler(request);
     }
   } catch (error) {
     if (
