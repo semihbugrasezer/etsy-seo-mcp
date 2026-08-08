@@ -74,10 +74,10 @@
     "ip-address": "10.1.1",
     "npm": "11.18.0",
     "@actions/http-client": {
-      "undici": "^6.27.0"
+      "undici": "^6.28.0"
     },
     "@semantic-release/github": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     }
   },
   "mcpName": "io.github.semihbugrasezer/seerxo"
