@@ -1,11 +1,20 @@
 [[PackageOverrides]]
 name = "undici"
-version = "6.26.0"
+version = "6.27.0"
 ecosystem = "npm"
 group = "dev"
 vulnerability.ignore = true
 effectiveUntil = 2026-08-31
-reason = "Bundled inside npm 11.17.0 via node-gyp release tooling; not shipped in the seerxo package runtime."
+reason = "Bundled inside npm 11.18.0 via node-gyp release tooling; not shipped in the seerxo package runtime."
+
+[[PackageOverrides]]
+name = "ip-address"
+version = "10.2.0"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-08-31
+reason = "Bundled inside npm 11.18.0 (socks-proxy-agent) release tooling; not shipped in the seerxo package runtime."
 
 [[PackageOverrides]]
 name = "brace-expansion"
